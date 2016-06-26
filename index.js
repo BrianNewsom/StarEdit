@@ -9,6 +9,7 @@ var apiToken = process.env["SLACK_BOT_TOKEN"] || ""
 var rtm = new RtmClient(apiToken, {logLevel: 'warn'});
 var slack = new Slack(apiToken);
 
+startBot();
 
 function startBot() {
 	console.log("Initiating slack bot - listening for relevant messages.");
@@ -22,20 +23,21 @@ function startBot() {
 			var correctionUser = anyMessage.user;
 			var channel = anyMessage.channel;
 			getMessageToCorrect(channel, correctionUser, function(messageToCorrect) {
-				// Correct the original message
-				updateMessage(
-					channel,
-					messageToCorrect.ts,
-					getCorrectedText(messageToCorrect.text, correctionText)
-				);
-				// Delete the * message
-				deleteMessage(channel, correctionTS);
+				// Correct the original message if we have a change
+				var correctedText = getCorrectedText(messageToCorrect.text, correctionText);
+				if (correctedText) {
+					updateMessage(
+						channel,
+						messageToCorrect.ts,
+						correctedText
+					);
+					// Delete the * message
+					deleteMessage(channel, correctionTS);
+				}
 			})
 		}
   });
 }
-
-startBot();
 
 /* API Wrappers */
 function getMessageToCorrect(channel, userId, cb) {
@@ -82,21 +84,31 @@ function startsWithAsterisk(msgText) {
 }
 
 function getCorrectedText(originalText, asteriskText) {
-	// getCorrectedText("This is a message with a mitsake", "*mistake");
+	/* Returns null if no change is made
+	  getCorrectedText("This is a message with a mitsake", "*mistake"); */
 	var correction = asteriskText.substring(1);
 	var originalArray = originalText.split(' ');
 	var newArray = reverseDYM(originalArray, correction);
 
-	return newArray.join(" ");
+	if (newArray) {
+		return newArray.join(" ");
+	} else {
+		return null
+	}
 }
 
-function reverseDYM(originalArray, correction) {
-	var fix = dym(correction, originalArray);
+function reverseDYM(stringArray, correction) {
+	// Return null if no correction can be made
+	var fix = dym(correction, stringArray);
 
-	var index = originalArray.indexOf(fix);
-	if (index !== -1) {
-		originalArray[index] = correction;
+	if (fix !== null) {
+		var index = stringArray.indexOf(fix);
+		if (index !== -1) {
+			stringArray[index] = correction;
+		}
+		return stringArray;
+	} else {
+		console.log("No matching edit found, returning null");
+		return null;
 	}
-
-	return originalArray
 }
