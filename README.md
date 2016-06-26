@@ -1,4 +1,4 @@
-# AsteriskCorrections
+# *Edit (StarEdit)
 Slack Bot allowing use of the asterisk syntax to edit a previous message
 
 ## Motivation
