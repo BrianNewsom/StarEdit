@@ -44,6 +44,14 @@ function getMessageToCorrect(channel, userId, cb) {
 	slack.api("channels.history", {
 		'channel': channel
 	}, function(err, response) {
+		if (err || !response.ok) {
+			if (response.error == "channel_not_found") {
+				console.log("StarEdit does not currently support direct messages. We're working on it!");
+			} else {
+				console.log(response.error);
+			}
+			return;
+		}
 		// Only search for user's message
 		var filteredMessages = _.filter(response.messages,
 			function(m) { return m.user === userId && !startsWithAsterisk(m.text)}
