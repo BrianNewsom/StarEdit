@@ -41,28 +41,53 @@ function startBot() {
 
 /* API Wrappers */
 function getMessageToCorrect(channel, userId, cb) {
+	if (channel[0].toLowerCase() == 'c') {
+		getChannelMessage(channel, function(err, response) {
+			findMostRecentMessage(err, response, userId, cb);
+		})
+	} else if (channel[0].toLowerCase() == 'd') {
+		getDirectMessage(channel, function(err, response) {
+			findMostRecentMessage(err, response, userId, cb);
+		})
+	}
+}
+
+function getChannelMessage(channel, cb) {
 	slack.api("channels.history", {
 		'channel': channel
 	}, function(err, response) {
-		if (err || !response.ok) {
-			if (response.error == "channel_not_found") {
-				console.log("StarEdit does not currently support direct messages. We're working on it!");
-			} else {
-				console.log(response.error);
-			}
-			return;
-		}
-		// Only search for user's message
-		var filteredMessages = _.filter(response.messages,
-			function(m) { return m.user === userId && !startsWithAsterisk(m.text)}
-		)
-
-		if (cb) {
-			// Skip the * message, it must be the next message for now
-			cb(_.first(filteredMessages))
-		}
+		cb(err, response);
 	})
 }
+
+function getDirectMessage(channel, cb) {
+	slack.api("im.history", {
+		'channel': channel
+	}, function(err, response) {
+		cb(err, response);
+	})
+}
+
+function findMostRecentMessage(err, response, userId, cb) {
+	if (err || !response.ok) {
+		if (response.error == "channel_not_found") {
+			console.log("The channel queried does not exist :/");
+		} else {
+			console.log(response.error);
+		}
+		return;
+	}
+	// Only search for user's message
+	var filteredMessages = _.filter(response.messages,
+		function(m) { return m.user === userId && !startsWithAsterisk(m.text)}
+	)
+
+	if (cb) {
+		// Skip the * message, it must be the next message for now
+		cb(_.first(filteredMessages))
+	}
+}
+
 
 function updateMessage(channel, timeStamp, newText) {
 	slack.api("chat.update", {
