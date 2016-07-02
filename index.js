@@ -9,6 +9,11 @@ var apiToken = process.env["SLACK_BOT_TOKEN"] || ""
 var rtm = new RtmClient(apiToken, {logLevel: 'warn'});
 var slack = new Slack(apiToken);
 
+const DOES_NOT_CONTAIN_ASTERISK = 0
+const STARTS_WITH_ASTERISK = 1
+const ENDS_WITH_ASTERISK = 2
+
+
 startBot();
 
 function startBot() {
@@ -17,14 +22,15 @@ function startBot() {
 
 	rtm.on(RTM_EVENTS.MESSAGE, function (anyMessage) {
 		// Listens to all `message` events from the team
-		if (startsWithAsterisk(anyMessage.text)) {
+		var startsOrEnds = startsOrEndsWithAsterisk(anyMessage.text)
+		if (startsOrEnds != DOES_NOT_CONTAIN_ASTERISK) {
 			var correctionText = anyMessage.text;
 			var correctionTS = anyMessage.ts;
 			var correctionUser = anyMessage.user;
 			var channel = anyMessage.channel;
 			getMessageToCorrect(channel, correctionUser, function(messageToCorrect) {
 				// Correct the original message if we have a change
-				var correctedText = getCorrectedText(messageToCorrect.text, correctionText);
+				var correctedText = getCorrectedText(messageToCorrect.text, correctionText, startsOrEnds);
 				if (correctedText) {
 					updateMessage(
 						channel,
@@ -79,7 +85,7 @@ function findMostRecentMessage(err, response, userId, cb) {
 	}
 	// Only search for user's message
 	var filteredMessages = _.filter(response.messages,
-		function(m) { return m.user === userId && !startsWithAsterisk(m.text)}
+		function(m) { return m.user === userId && !startsOrEndsWithAsterisk(m.text)}
 	)
 
 	if (cb) {
@@ -109,17 +115,25 @@ function deleteMessage(channel, ts) {
 }
 
 /* Utility functions */
-function startsWithAsterisk(msgText) {
+function startsOrEndsWithAsterisk(msgText) {
 	if (msgText) {
-		if (msgText[0] == "*") return true
+		if (msgText[0] == "*")
+			return STARTS_WITH_ASTERISK
+		else if (msgText[msgText.length-1] == "*") 
+			return ENDS_WITH_ASTERISK
 	}
-	return false;
+	return DOES_NOT_CONTAIN_ASTERISK
 }
 
-function getCorrectedText(originalText, asteriskText) {
+function getCorrectedText(originalText, asteriskText, startsOrEnds) {
 	/* Returns null if no change is made
-	  getCorrectedText("This is a message with a mitsake", "*mistake"); */
-	var correction = asteriskText.substring(1);
+	  getCorrectedText("This is a message with a mitsake", "*mistake", STARTS); */
+	var correction = ""
+	if (startsOrEnds == ENDS_WITH_ASTERISK) 
+		correction = asteriskText.substring(0,asteriskText.length-1)
+	else
+		correction = asteriskText.substring(1);
+
 	var originalArray = originalText.split(' ');
 	var newArray = reverseDYM(originalArray, correction);
 
