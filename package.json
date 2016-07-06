@@ -1,5 +1,5 @@
 {
-  "name": "asterisk-corrections",
+  "name": "staredit",
   "version": "0.0.1",
   "description": "Slack Bot to correct spellings, etc. with use of an asterisk",
   "main": "index.js",
